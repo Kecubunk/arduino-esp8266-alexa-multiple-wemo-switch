@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# This Tools is Created By Cahyo Hertanto to work With Fauxmo Library / Kakopappa Multi Switch Alexa for ESP8266
+# that emulated Wemo device.
+#
+local port
+tanggal=`date "+%d.%m.%Y"`
+jam=`date "+%H:%M"`
+h=`hostname`
+u=`whoami`
+dist=`awk '{print $1}' /etc/issue`
+ver=`awk '{print $3}' /etc/issue`
+os=`uname -o`
+kver=`uname -r -i`
+
+banner(){
+tput clear
+tput setaf 6
+echo " ============================================================================="
+tput cup 0 33
+tput setaf 3
+echo " "$dist $ver" "
+tput setaf 7
+echo " Hostname         :" $h
+tput cup 1 35
+echo " User             :" $u
+echo " Date             :" $tanggal
+tput cup 2 35
+echo " Time             :" $jam
+echo " Operating System :" $os
+tput cup 3 35
+echo " Kernel Version   :" $kver
+tput setaf 6
+echo " ============================================================================="
+echo""
+tput sgr0
+}
+
+menus() {
+	clear
+	tput setaf 6
+	echo " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	tput sgr0
+	echo "                            M A I N - M E N U                               "
+	tput setaf 6
+  echo " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	tput sgr0
+	echo " 1. Discover Device in Local Network(not work yet)"
+	echo " 2. Turn Device ON/OFF"
+  echo " 3. GET Device State"
+  echo " 4. Exit"
+	tput setaf 6
+  echo " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+	tput sgr0
+	echo ""
+}
+
+ip(){
+  echo -n " Enter Device IP : "
+  read IP;
+	echo -n " Enter Base Local Port : "
+	read port;
+}
+
+option(){
+	local choice
+	read -p " Enter choice [ 1 - 4] : " choice
+	case $choice in
+		1) discover ;;
+		2) deviceCmd ;;
+		3) deviceState;;
+		4) exit 0;;
+		*) echo -e "${RED}Error...${STD}" && sleep 2
+	esac
+}
+
+pause(){
+  read -p " Press [Enter] key to continue..." #fackEnterKey
+}
+################################################################################
+discover(){
+  echo ""
+  echo " Discovering Device in Local Network"
+  node esp.js
+  pause
+  ./menu
+  echo ""
+}
+
+deviceName(){
+  echo ""
+  ip
+  curl -0 -A '' -X POST -H 'Accept: ' -H 'Content-type: text/xml; charset="utf-8"' -H "SOAPACTION: \"urn:Belkin:service:basicevent:1#ChangeFriendlyName\"" --data '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:ChangeFriendlyName xmlns:u="urn:Belkin:service:basicevent:1"><FriendlyName>Pool Filter</FriendlyName></u:ChangeFriendlyName></s:Body></s:Envelope>' -s http://$IP/upnp/control/basicevent1 |
+  grep "<FriendlyName"  | cut -d">" -f2 | cut -d "<" -f1
+  pause
+  ./menu
+}
+
+deviceState(){
+  echo ""
+  ip
+  curl -0 -A '' -X POST -H 'Accept: ' -H 'Content-type: text/xml; charset="utf-8"' -H "SOAPACTION: \"urn:Belkin:service:basicevent:1#GetBinaryState\"" --data '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:GetBinaryState xmlns:u="urn:Belkin:service:basicevent:1"><BinaryState>1</BinaryState></u:GetBinaryState></s:Body></s:Envelope>' -s http://$IP:$port/upnp/control/basicevent1 | grep "<BinaryState"  | cut -d">" -f2 | cut -d "<" -f1 | sed ' s/0/ RELAY OFF/g' | sed ' s/1/ RELAY ON/g'
+  echo""
+  pause
+  ./menu
+}
+
+deviceCmd(){
+  ip
+  echo -n " Enter Command to Turn ON/OFF Device : "
+  read cmd
+  echo " Turning "$cmd "Device"
+  if [ "$cmd" = "ON" ]
+  then
+  curl -0 -A '' -X POST -H 'Accept: ' -H 'Content-type: text/xml; charset="utf-8"' -H "SOAPACTION: \"urn:Belkin:service:basicevent:1#SetBinaryState\"" --data '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:SetBinaryState xmlns:u="urn:Belkin:service:basicevent:1"><BinaryState>1</BinaryState></u:SetBinaryState></s:Body></s:Envelope>' -s http://$IP:$port/upnp/control/basicevent1 |
+  grep "<BinaryState"  | cut -d">" -f2 | cut -d "<" -f1 | sed 's/0/ RELAY OFF/g' | sed 's/1/ RELAY ON/g'
+   pause
+  ./menu
+  elif [ "$cmd" = "OFF" ]
+  then
+  curl -0 -A '' -X POST -H 'Accept: ' -H 'Content-type: text/xml; charset="utf-8"' -H "SOAPACTION: \"urn:Belkin:service:basicevent:1#SetBinaryState\"" --data '<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:SetBinaryState xmlns:u="urn:Belkin:service:basicevent:1"><BinaryState>0</BinaryState></u:SetBinaryState></s:Body></s:Envelope>' -s http://$IP:$port/upnp/control/basicevent1 |
+  grep "<BinaryState"  | cut -d">" -f2 | cut -d "<" -f1 | sed 's/0/ RELAY OFF/g' | sed 's/1/ RELAY ON/g'
+	pause
+	./menu
+  fi
+}
+
+banner
+menus
+option
