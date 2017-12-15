@@ -35,6 +35,8 @@ https://github.com/kakopappa/arduino-esp8266-alexa-wemo-switch/edit/master/READM
  * [paypal.me/arunat](http://paypal.me/arunat)
 
 Add Bash Script for Linux User to test Wemos.ino :
+
+
 To Run : 
 1. Open Terminal using Ctrl+Alt+T
 2. and type $ ./menu and choose Options Menu
